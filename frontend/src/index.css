@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Loosen line-height slightly for lesson prose, which mixes serif math
+   with sans body copy and needs a bit more breathing room than UI text. */
+.prose-lesson p {
+  line-height: 1.75;
+}
