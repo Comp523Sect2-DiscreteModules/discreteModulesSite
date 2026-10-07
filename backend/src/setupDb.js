@@ -6,8 +6,14 @@ import { pool } from './db.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function run() {
-  const schema = readFileSync(path.join(__dirname, '..', 'db', 'schema.sql'), 'utf8');
-  const seed = readFileSync(path.join(__dirname, '..', 'db', 'seed.sql'), 'utf8');
+  const schema = readFileSync(
+    path.join(__dirname, '..', 'db', 'schema.sql'),
+    'utf8',
+  );
+  const seed = readFileSync(
+    path.join(__dirname, '..', 'db', 'seed.sql'),
+    'utf8',
+  );
 
   console.log('Applying schema.sql ...');
   await pool.query(schema);

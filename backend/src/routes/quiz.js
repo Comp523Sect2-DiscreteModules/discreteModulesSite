@@ -9,12 +9,15 @@ const router = Router();
 // questions are seeded yet, so this returns an empty array. The quiz page
 // on the frontend is built to render whatever comes back here, so wiring
 // up real questions later is just a matter of inserting rows.
-router.get('/:moduleId', asyncHandler(async (req, res) => {
-  const { rows } = await pool.query(
-    'SELECT * FROM quiz_questions WHERE module_id = $1 ORDER BY order_index, id',
-    [req.params.moduleId]
-  );
-  res.json(rows);
-}));
+router.get(
+  '/:moduleId',
+  asyncHandler(async (req, res) => {
+    const { rows } = await pool.query(
+      'SELECT * FROM quiz_questions WHERE module_id = $1 ORDER BY order_index, id',
+      [req.params.moduleId],
+    );
+    res.json(rows);
+  }),
+);
 
 export default router;

@@ -12,7 +12,10 @@ export default function ModuleEditor() {
   const [draftContent, setDraftContent] = useState('');
 
   function refresh() {
-    api.getModule(moduleId).then(setModule).catch((err) => setError(err.message));
+    api
+      .getModule(moduleId)
+      .then(setModule)
+      .catch((err) => setError(err.message));
   }
 
   useEffect(refresh, [moduleId]);
@@ -42,48 +45,53 @@ export default function ModuleEditor() {
     await api.createLesson({
       module_id: Number(moduleId),
       title: 'New lesson',
-      content_md: 'Write lesson content here using Markdown. Use `$...$` for inline LaTeX\nand `$$...$$` for display LaTeX, e.g. $$\\int_0^1 x\\,dx = \\tfrac{1}{2}$$.',
+      content_md:
+        'Write lesson content here using Markdown. Use `$...$` for inline LaTeX\nand `$$...$$` for display LaTeX, e.g. $$\\int_0^1 x\\,dx = \\tfrac{1}{2}$$.',
     });
     refresh();
   }
 
-  if (error) return <p className="max-w-3xl mx-auto px-6 py-10 text-warn">{error}</p>;
-  if (!module) return <p className="max-w-3xl mx-auto px-6 py-10 text-ink/60">Loading…</p>;
+  if (error)
+    return <p className="mx-auto max-w-3xl px-6 py-10 text-warn">{error}</p>;
+  if (!module)
+    return <p className="mx-auto max-w-3xl px-6 py-10 text-ink/60">Loading…</p>;
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10">
+    <div className="mx-auto max-w-3xl px-6 py-10">
       <Link to="/admin" className="text-sm text-accent-dark hover:underline">
         &larr; Admin dashboard
       </Link>
 
-      <h1 className="font-serif text-3xl font-semibold mt-3 mb-6">Edit module</h1>
+      <h1 className="mb-6 mt-3 font-serif text-3xl font-semibold">
+        Edit module
+      </h1>
 
-      <div className="space-y-4 mb-10 border border-line rounded px-5 py-4 bg-white">
+      <div className="mb-10 space-y-4 rounded border border-line bg-white px-5 py-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Title</label>
+          <label className="mb-1 block text-sm font-medium">Title</label>
           <input
             defaultValue={module.title}
             onBlur={(e) => handleModuleFieldSave('title', e.target.value)}
-            className="w-full border border-line rounded px-3 py-2"
+            className="w-full rounded border border-line px-3 py-2"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Description</label>
+          <label className="mb-1 block text-sm font-medium">Description</label>
           <textarea
             defaultValue={module.description}
             onBlur={(e) => handleModuleFieldSave('description', e.target.value)}
             rows={2}
-            className="w-full border border-line rounded px-3 py-2"
+            className="w-full rounded border border-line px-3 py-2"
           />
         </div>
         {savingModule && <p className="text-xs text-ink/40">Saving…</p>}
       </div>
 
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <h2 className="font-serif text-xl font-semibold">Lessons</h2>
         <button
           onClick={addLesson}
-          className="text-sm border border-line rounded px-3 py-1.5 hover:border-accent-dark"
+          className="rounded border border-line px-3 py-1.5 text-sm hover:border-accent-dark"
         >
           + Add lesson
         </button>
@@ -91,8 +99,11 @@ export default function ModuleEditor() {
 
       <div className="space-y-6">
         {module.lessons.map((lesson) => (
-          <div key={lesson.id} className="border border-line rounded px-5 py-4 bg-white">
-            <h3 className="font-medium mb-3">{lesson.title}</h3>
+          <div
+            key={lesson.id}
+            className="rounded border border-line bg-white px-5 py-4"
+          >
+            <h3 className="mb-3 font-medium">{lesson.title}</h3>
 
             {editingLessonId === lesson.id ? (
               <div className="space-y-3">
@@ -100,18 +111,18 @@ export default function ModuleEditor() {
                   value={draftContent}
                   onChange={(e) => setDraftContent(e.target.value)}
                   rows={10}
-                  className="w-full border border-line rounded px-3 py-2 font-mono text-sm"
+                  className="w-full rounded border border-line px-3 py-2 font-mono text-sm"
                 />
                 <div className="flex gap-3">
                   <button
                     onClick={() => saveLesson(lesson)}
-                    className="bg-accent-dark text-white rounded px-4 py-1.5 text-sm font-medium hover:bg-accent-dark/90"
+                    className="rounded bg-accent-dark px-4 py-1.5 text-sm font-medium text-white hover:bg-accent-dark/90"
                   >
                     Save
                   </button>
                   <button
                     onClick={() => setEditingLessonId(null)}
-                    className="text-ink/60 text-sm hover:text-ink"
+                    className="text-sm text-ink/60 hover:text-ink"
                   >
                     Cancel
                   </button>
@@ -119,7 +130,7 @@ export default function ModuleEditor() {
               </div>
             ) : (
               <>
-                <div className="border-t border-line pt-3 mb-3">
+                <div className="mb-3 border-t border-line pt-3">
                   <MathContent markdown={lesson.content_md} />
                 </div>
                 <button
@@ -134,7 +145,7 @@ export default function ModuleEditor() {
         ))}
 
         {module.lessons.length === 0 && (
-          <p className="text-ink/60 text-sm">No lessons yet — add one above.</p>
+          <p className="text-sm text-ink/60">No lessons yet — add one above.</p>
         )}
       </div>
     </div>
