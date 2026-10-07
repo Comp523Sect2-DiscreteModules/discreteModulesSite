@@ -15,10 +15,14 @@ function renderMarkdownish(md) {
 
     if (line.startsWith('### ')) {
       closeList();
-      html.push(`<h3 class="text-lg font-serif font-semibold mt-6 mb-2">${inline(line.slice(4))}</h3>`);
+      html.push(
+        `<h3 class="text-lg font-serif font-semibold mt-6 mb-2">${inline(line.slice(4))}</h3>`,
+      );
     } else if (line.startsWith('## ')) {
       closeList();
-      html.push(`<h2 class="text-2xl font-serif font-semibold mt-8 mb-3">${inline(line.slice(3))}</h2>`);
+      html.push(
+        `<h2 class="text-2xl font-serif font-semibold mt-8 mb-3">${inline(line.slice(3))}</h2>`,
+      );
     } else if (line.startsWith('- ')) {
       if (!inList) {
         html.push('<ul class="list-disc pl-6 space-y-1 my-3">');
@@ -56,7 +60,7 @@ export default function MathContent({ markdown }) {
   useEffect(() => {
     if (window.MathJax?.typesetPromise) {
       window.MathJax.typesetPromise([ref.current]).catch((err) =>
-        console.error('MathJax typeset error:', err)
+        console.error('MathJax typeset error:', err),
       );
     }
   }, [markdown]);

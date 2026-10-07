@@ -36,7 +36,9 @@ app.use('/api/quiz', quizRouter);
 // server-side but returns a generic message to the client.
 app.use((err, _req, res, _next) => {
   console.error('Request failed:', err);
-  res.status(500).json({ error: 'Something went wrong on the server. Check the backend logs.' });
+  res.status(500).json({
+    error: 'Something went wrong on the server. Check the backend logs.',
+  });
 });
 
 const PORT = process.env.PORT || 4000;
@@ -51,7 +53,7 @@ async function start() {
     console.error(err.message);
     console.error(
       'Is Postgres running? Does the database in your .env exist? ' +
-        'Have you run `npm run db:setup` to apply schema.sql and seed.sql?\n'
+        'Have you run `npm run db:setup` to apply schema.sql and seed.sql?\n',
     );
     process.exit(1);
   }

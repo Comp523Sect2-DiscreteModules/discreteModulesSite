@@ -23,11 +23,13 @@ async function request(path, options = {}) {
 export const api = {
   getModules: () => request('/modules'),
   getModule: (id) => request(`/modules/${id}`),
-  createModule: (data) => request('/modules', { method: 'POST', body: JSON.stringify(data) }),
+  createModule: (data) =>
+    request('/modules', { method: 'POST', body: JSON.stringify(data) }),
   updateModule: (id, data) =>
     request(`/modules/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   updateLesson: (id, data) =>
     request(`/lessons/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  createLesson: (data) => request('/lessons', { method: 'POST', body: JSON.stringify(data) }),
+  createLesson: (data) =>
+    request('/lessons', { method: 'POST', body: JSON.stringify(data) }),
   getQuiz: (moduleId) => request(`/quiz/${moduleId}`),
 };

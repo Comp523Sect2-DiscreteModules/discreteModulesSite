@@ -6,10 +6,17 @@ export default function AdminDashboard() {
   const [modules, setModules] = useState(null);
   const [error, setError] = useState(null);
   const [creating, setCreating] = useState(false);
-  const [newModule, setNewModule] = useState({ slug: '', title: '', description: '' });
+  const [newModule, setNewModule] = useState({
+    slug: '',
+    title: '',
+    description: '',
+  });
 
   function refresh() {
-    api.getModules().then(setModules).catch((err) => setError(err.message));
+    api
+      .getModules()
+      .then(setModules)
+      .catch((err) => setError(err.message));
   }
 
   useEffect(refresh, []);
@@ -28,71 +35,84 @@ export default function AdminDashboard() {
     refresh();
   }
 
-  if (error) return <p className="max-w-4xl mx-auto px-6 py-10 text-warn">{error}</p>;
-  if (!modules) return <p className="max-w-4xl mx-auto px-6 py-10 text-ink/60">Loading…</p>;
+  if (error)
+    return <p className="mx-auto max-w-4xl px-6 py-10 text-warn">{error}</p>;
+  if (!modules)
+    return <p className="mx-auto max-w-4xl px-6 py-10 text-ink/60">Loading…</p>;
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-10">
-      <div className="flex items-center justify-between mb-2">
+    <div className="mx-auto max-w-4xl px-6 py-10">
+      <div className="mb-2 flex items-center justify-between">
         <h1 className="font-serif text-3xl font-semibold">Admin dashboard</h1>
         <button
           onClick={() => setCreating((c) => !c)}
-          className="text-sm border border-line rounded px-3 py-1.5 hover:border-accent-dark"
+          className="rounded border border-line px-3 py-1.5 text-sm hover:border-accent-dark"
         >
           {creating ? 'Cancel' : '+ New module'}
         </button>
       </div>
-      <p className="text-ink/60 mb-8">
-        Create and edit modules here (US6/US7). Publishing/unpublishing controls whether
-        students can see a module — there are no prerequisites or score gates by design.
+      <p className="mb-8 text-ink/60">
+        Create and edit modules here (US6/US7). Publishing/unpublishing controls
+        whether students can see a module — there are no prerequisites or score
+        gates by design.
       </p>
 
       {creating && (
         <form
           onSubmit={handleCreate}
-          className="border border-line rounded px-5 py-4 mb-8 space-y-3 bg-white"
+          className="mb-8 space-y-3 rounded border border-line bg-white px-5 py-4"
         >
           <div>
-            <label className="block text-sm font-medium mb-1">Slug (URL-safe id)</label>
+            <label className="mb-1 block text-sm font-medium">
+              Slug (URL-safe id)
+            </label>
             <input
               value={newModule.slug}
-              onChange={(e) => setNewModule({ ...newModule, slug: e.target.value })}
+              onChange={(e) =>
+                setNewModule({ ...newModule, slug: e.target.value })
+              }
               placeholder="e.g. graph-theory"
-              className="w-full border border-line rounded px-3 py-2"
+              className="w-full rounded border border-line px-3 py-2"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Title</label>
+            <label className="mb-1 block text-sm font-medium">Title</label>
             <input
               value={newModule.title}
-              onChange={(e) => setNewModule({ ...newModule, title: e.target.value })}
+              onChange={(e) =>
+                setNewModule({ ...newModule, title: e.target.value })
+              }
               placeholder="e.g. Graph Theory"
-              className="w-full border border-line rounded px-3 py-2"
+              className="w-full rounded border border-line px-3 py-2"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
+            <label className="mb-1 block text-sm font-medium">
+              Description
+            </label>
             <textarea
               value={newModule.description}
-              onChange={(e) => setNewModule({ ...newModule, description: e.target.value })}
-              className="w-full border border-line rounded px-3 py-2"
+              onChange={(e) =>
+                setNewModule({ ...newModule, description: e.target.value })
+              }
+              className="w-full rounded border border-line px-3 py-2"
               rows={2}
             />
           </div>
           <button
             type="submit"
-            className="bg-accent-dark text-white rounded px-4 py-2 text-sm font-medium hover:bg-accent-dark/90"
+            className="rounded bg-accent-dark px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark/90"
           >
             Create module (unpublished)
           </button>
         </form>
       )}
 
-      <table className="w-full text-sm border-collapse">
+      <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="text-left text-ink/50 border-b border-line">
+          <tr className="border-b border-line text-left text-ink/50">
             <th className="py-2 font-medium">Title</th>
             <th className="py-2 font-medium">Status</th>
             <th className="py-2 font-medium">Lessons</th>
@@ -110,16 +130,19 @@ export default function AdminDashboard() {
                 <span
                   className={
                     m.published
-                      ? 'inline-block px-2 py-0.5 rounded bg-good/10 text-good text-xs font-medium'
-                      : 'inline-block px-2 py-0.5 rounded bg-ink/5 text-ink/50 text-xs font-medium'
+                      ? 'inline-block rounded bg-good/10 px-2 py-0.5 text-xs font-medium text-good'
+                      : 'inline-block rounded bg-ink/5 px-2 py-0.5 text-xs font-medium text-ink/50'
                   }
                 >
                   {m.published ? 'Published' : 'Draft'}
                 </span>
               </td>
               <td className="py-3 text-ink/60">—</td>
-              <td className="py-3 text-right space-x-3">
-                <Link to={`/admin/modules/${m.id}`} className="text-accent-dark hover:underline">
+              <td className="space-x-3 py-3 text-right">
+                <Link
+                  to={`/admin/modules/${m.id}`}
+                  className="text-accent-dark hover:underline"
+                >
                   Edit
                 </Link>
                 <button

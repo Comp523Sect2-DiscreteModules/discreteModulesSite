@@ -7,26 +7,34 @@ export default function QuizPage() {
   const [questions, setQuestions] = useState(null);
 
   useEffect(() => {
-    api.getQuiz(moduleId).then(setQuestions).catch(() => setQuestions([]));
+    api
+      .getQuiz(moduleId)
+      .then(setQuestions)
+      .catch(() => setQuestions([]));
   }, [moduleId]);
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10">
-      <Link to={`/modules/${moduleId}`} className="text-sm text-accent-dark hover:underline">
+    <div className="mx-auto max-w-3xl px-6 py-10">
+      <Link
+        to={`/modules/${moduleId}`}
+        className="text-sm text-accent-dark hover:underline"
+      >
         &larr; Back to lesson
       </Link>
 
-      <h1 className="font-serif text-3xl font-semibold mt-3 mb-8">Practice quiz</h1>
+      <h1 className="mb-8 mt-3 font-serif text-3xl font-semibold">
+        Practice quiz
+      </h1>
 
       {questions === null && <p className="text-ink/60">Loading…</p>}
 
       {questions?.length === 0 && (
-        <div className="border border-dashed border-line rounded px-6 py-10 text-center">
-          <p className="text-ink/70 font-medium mb-1">No questions yet</p>
+        <div className="rounded border border-dashed border-line px-6 py-10 text-center">
+          <p className="mb-1 font-medium text-ink/70">No questions yet</p>
           <p className="text-sm text-ink/50">
-            This module doesn't have quiz content yet. The API and question format are
-            ready — this is where auto-graded questions with immediate feedback (US3)
-            will render once content is added.
+            This module doesn't have quiz content yet. The API and question
+            format are ready — this is where auto-graded questions with
+            immediate feedback (US3) will render once content is added.
           </p>
         </div>
       )}
@@ -34,7 +42,7 @@ export default function QuizPage() {
       {questions && questions.length > 0 && (
         <ul className="space-y-6">
           {questions.map((q) => (
-            <li key={q.id} className="border border-line rounded px-5 py-4">
+            <li key={q.id} className="rounded border border-line px-5 py-4">
               {q.prompt}
             </li>
           ))}
