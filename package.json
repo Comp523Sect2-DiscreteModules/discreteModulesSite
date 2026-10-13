@@ -4,9 +4,12 @@
   "description": "Base-layer scaffold for COMP 523 (Fall 2026). See the project's chat writeup for a full walkthrough. Quickstart:",
   "main": "index.js",
   "scripts": {
+    "install:all": "npm ci && npm --prefix backend ci && npm --prefix frontend ci",
+    "dev": "concurrently -n api,web -c blue,green \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix backend start",
     "lint": "eslint .",
     "format:check": "prettier --check .",
-    "test": "echo \"Error: no test specified\" && exit 1",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -25,6 +28,7 @@
     "@commitlint/cli": "^20.5.3",
     "@commitlint/config-conventional": "^20.5.3",
     "@eslint/js": "^9.39.5",
+    "concurrently": "^10.0.6",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",

@@ -1,6 +1,8 @@
 import express from 'express';
-import cors from 'cors';
 import 'dotenv/config';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
 
 import { pool } from './db.js';
 import modulesRouter from './routes/modules.js';
@@ -9,7 +11,6 @@ import quizRouter from './routes/quiz.js';
 
 const app = express();
 
-app.use(cors());
 app.use(express.json());
 
 // --- Base-layer "auth" ---
@@ -30,6 +31,22 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/modules', modulesRouter);
 app.use('/api/lessons', lessonsRouter);
 app.use('/api/quiz', quizRouter);
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const distPath = path.join(__dirname, '..', '..', 'frontend', 'dist');
+
+// Unknown API routes should return JSON 404s, not the React app
+app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found.' }));
+
+// Built frontend (JS/CSS/assets)
+app.use(express.static(distPath));
+
+// A missing hashed asset should 404, not return index.html with a 200
+app.use('/assets', (_req, res) => res.sendStatus(404));
+
+// SPA fallback: needed because you use BrowserRouter. Without it,
+// refreshing on /modules/1/quiz or /admin would return "Cannot GET ...".
+app.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
 
 // Safety net: any error passed to next() (including from asyncHandler-wrapped
 // routes) lands here instead of crashing the process. Logs the real error
@@ -56,6 +73,13 @@ async function start() {
         'Have you run `npm run db:setup` to apply schema.sql and seed.sql?\n',
     );
     process.exit(1);
+  }
+
+  if (!existsSync(path.join(distPath, 'index.html'))) {
+    console.warn(
+      'Frontend build not found (frontend/dist). Fine in dev: use the Vite ' +
+        'server on :5173. For production, run `npm run build` first.',
+    );
   }
 
   app.listen(PORT, () => {
