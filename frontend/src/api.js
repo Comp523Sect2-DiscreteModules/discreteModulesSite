@@ -31,10 +31,4 @@ export const api = {
     request(`/lessons/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   createLesson: (data) =>
     request('/lessons', { method: 'POST', body: JSON.stringify(data) }),
-  getQuiz: (moduleId) => request(`/quiz/${moduleId}`),
-  createQuiz: (moduleId, questions) =>
-    request(`/quiz/${moduleId}`, {
-      method: 'POST',
-      body: JSON.stringify({ questions }),
-    }),
 };

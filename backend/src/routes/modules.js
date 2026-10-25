@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import { requireAdmin } from '../requireAdmin.js';
 import { asyncHandler } from '../asyncHandler.js';
+import { normalizeQuizFormUrl } from '../quizFormUrl.js';
 
 const router = Router();
 
@@ -70,7 +71,12 @@ router.post(
   }),
 );
 
-// PUT /api/modules/:id  (admin only) -> edit title/description/published
+// PUT /api/modules/:id  (admin only) -> edit title/description/published and
+// the module's practice-quiz Google Form.
+//
+// Most fields use COALESCE, so omitting one leaves it unchanged. quiz_form_url
+// is different: it must be possible to clear it, so it is only touched when the
+// key is present in the request body (an empty string or null removes the quiz).
 router.put(
   '/:id',
   requireAdmin,
@@ -78,15 +84,27 @@ router.put(
     const { id } = req.params;
     const { title, description, published } = req.body;
 
+    const updatesQuizForm = 'quiz_form_url' in req.body;
+    let quizFormUrl = null;
+
+    if (updatesQuizForm) {
+      const result = normalizeQuizFormUrl(req.body.quiz_form_url);
+      if (result.error) {
+        return res.status(400).json({ error: result.error });
+      }
+      quizFormUrl = result.value;
+    }
+
     const { rows } = await pool.query(
       `UPDATE modules
      SET title = COALESCE($1, title),
          description = COALESCE($2, description),
          published = COALESCE($3, published),
+         quiz_form_url = CASE WHEN $4::boolean THEN $5::text ELSE quiz_form_url END,
          updated_at = now()
-     WHERE id = $4
+     WHERE id = $6
      RETURNING *`,
-      [title, description, published, id],
+      [title, description, published, updatesQuizForm, quizFormUrl, id],
     );
 
     if (!rows[0]) {

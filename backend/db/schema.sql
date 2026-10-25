@@ -1,8 +1,12 @@
 -- Base-layer schema for the Discrete Math Review App.
 -- Kept intentionally simple: this models "definite" requirements only
--- (modules, lessons, a quiz-questions table with no seeded content yet,
--- and a bare-bones users table standing in for future Onyen/SSO accounts).
+-- (modules, lessons, and a bare-bones users table standing in for future
+-- Onyen/SSO accounts). Practice quizzes live in Google Forms; a module just
+-- stores the link to its form.
 
+-- Legacy: the app used to keep native quiz questions in this table. It is no
+-- longer created, but it is still dropped here so re-running this script on a
+-- database that has it doesn't fail on its foreign key to `modules`.
 DROP TABLE IF EXISTS quiz_questions;
 DROP TABLE IF EXISTS lessons;
 DROP TABLE IF EXISTS modules;
@@ -23,6 +27,9 @@ CREATE TABLE modules (
   description TEXT NOT NULL DEFAULT '',
   published BOOLEAN NOT NULL DEFAULT true,
   order_index INTEGER NOT NULL DEFAULT 0,
+  -- Embeddable Google Form URL for this module's practice quiz (NULL = no
+  -- quiz yet). Validated and normalized by backend/src/quizFormUrl.js.
+  quiz_form_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -38,17 +45,4 @@ CREATE TABLE lessons (
   order_index INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Table exists so the quiz page has something real to query against,
--- but per the spec the quiz page itself is a stub for this base layer,
--- so no rows are seeded.
-CREATE TABLE quiz_questions (
-  id SERIAL PRIMARY KEY,
-  module_id INTEGER NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
-  prompt TEXT NOT NULL,
-  choices JSONB NOT NULL DEFAULT '[]',
-  correct_choice INTEGER,
-  explanation TEXT,
-  order_index INTEGER NOT NULL DEFAULT 0
 );

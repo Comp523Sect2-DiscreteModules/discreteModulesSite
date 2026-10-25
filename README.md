@@ -49,3 +49,41 @@ npm --prefix backend ci && npm --prefix frontend ci && npm run build
 ```
 
 and the start command is `npm start`.
+
+## Practice quizzes (Google Forms)
+
+Each module's practice quiz is a Google Form embedded on the quiz page. The app
+only stores the form's link; Google handles the questions, grading, and
+responses (see the form's Responses tab, or link it to a Google Sheet). The app
+does not see scores.
+
+To add a quiz to a module:
+
+1. Create the form in Google Forms. In **Settings**, turn on **Make
+   this a quiz**, set **Release grade** to _Immediately after each submission_,
+   and enable showing missed questions and correct answers.
+2. Under **Settings → Responses**, make sure the form is **not** restricted to
+   an organization (and doesn't require sign-in). Google can't show its login
+   page inside an embed, so a restricted form appears blank to students.
+   Google Forms has no LaTeX support, so write math with Unicode symbols or
+   images.
+3. In the form, choose **Send**, open the **`< >`** tab, and copy the embed
+   code.
+4. Sign in to the app as an admin, open **Admin dashboard → Edit** on the
+   module, and paste the embed code (or just the link inside it) into **Practice
+   quiz (Google Form)**, then **Save quiz**. Use **Preview as student** to check
+   it, and **Remove quiz** to take it down.
+
+Only `docs.google.com` form links are accepted, and the "Try the practice quiz"
+button only appears for modules that have a quiz.
+
+### Upgrading an existing database
+
+Running `npm --prefix backend run db:setup` rebuilds the schema (and erases all
+data). To keep your existing data, run this instead. It adds the new column and
+removes the old native-quiz table, which deletes any quiz questions stored in
+it:
+
+```bash
+psql discrete_math_review -c "ALTER TABLE modules ADD COLUMN IF NOT EXISTS quiz_form_url TEXT; DROP TABLE IF EXISTS quiz_questions;"
+```

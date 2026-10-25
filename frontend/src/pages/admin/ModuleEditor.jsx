@@ -10,25 +10,12 @@ export default function ModuleEditor() {
   const [savingModule, setSavingModule] = useState(false);
   const [editingLessonId, setEditingLessonId] = useState(null);
   const [draftContent, setDraftContent] = useState('');
-  const [quizDrafts, setQuizDrafts] = useState([createEmptyQuizQuestion()]);
-  const [savingQuiz, setSavingQuiz] = useState(false);
-  const [quizMessage, setQuizMessage] = useState(null);
-  const [quizError, setQuizError] = useState(null);
 
   function refresh() {
     api
       .getModule(moduleId)
       .then(setModule)
       .catch((err) => setError(err.message));
-  }
-
-  function createEmptyQuizQuestion() {
-    return {
-      prompt: '',
-      choices: ['', '', '', ''],
-      correct_choice: 0,
-      explanation: '',
-    };
   }
 
   useEffect(refresh, [moduleId]);
@@ -62,57 +49,6 @@ export default function ModuleEditor() {
         'Write lesson content here using Markdown. Use `$...$` for inline LaTeX\nand `$$...$$` for display LaTeX, e.g. $$\\int_0^1 x\\,dx = \\tfrac{1}{2}$$.',
     });
     refresh();
-  }
-
-  function updateQuizDraft(questionIndex, field, value) {
-    setQuizDrafts((current) =>
-      current.map((question, index) =>
-        index === questionIndex ? { ...question, [field]: value } : question,
-      ),
-    );
-  }
-
-  function updateQuizChoice(questionIndex, choiceIndex, value) {
-    setQuizDrafts((current) =>
-      current.map((question, index) =>
-        index === questionIndex
-          ? {
-              ...question,
-              choices: question.choices.map((choice, index) =>
-                index === choiceIndex ? value : choice,
-              ),
-            }
-          : question,
-      ),
-    );
-  }
-
-  async function saveQuizQuestions(event) {
-    event.preventDefault();
-
-    setSavingQuiz(true);
-    setQuizError(null);
-    setQuizMessage(null);
-
-    try {
-      const questions = quizDrafts.map((question) => ({
-        prompt: question.prompt.trim(),
-        choices: question.choices.map((choice) => choice.trim()),
-        correct_choice: Number(question.correct_choice),
-        explanation: question.explanation.trim(),
-      }));
-
-      await api.createQuiz(moduleId, questions);
-
-      setQuizMessage(`Successfully saved ${questions.length} question(s).`);
-
-      // Start a fresh form after a successful save.
-      setQuizDrafts([createEmptyQuizQuestion()]);
-    } catch (err) {
-      setQuizError(err.message);
-    } finally {
-      setSavingQuiz(false);
-    }
   }
 
   if (error)
@@ -212,146 +148,117 @@ export default function ModuleEditor() {
           <p className="text-sm text-ink/60">No lessons yet — add one above.</p>
         )}
       </div>
-      <section className="mt-12">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-serif text-xl font-semibold">Quiz questions</h2>
+      <QuizFormSection
+        key={module.id}
+        moduleId={module.id}
+        initialUrl={module.quiz_form_url}
+      />
+    </div>
+  );
+}
 
-          <button
-            type="button"
-            onClick={() =>
-              setQuizDrafts((current) => [
-                ...current,
-                createEmptyQuizQuestion(),
-              ])
-            }
-            className="rounded border border-line px-3 py-1.5 text-sm hover:border-accent-dark"
+// Lets an admin attach (or remove) the Google Form used as this module's
+// practice quiz. Keeps its own draft/saved state so typing here isn't clobbered
+// when the rest of the editor reloads the module.
+function QuizFormSection({ moduleId, initialUrl }) {
+  const [savedUrl, setSavedUrl] = useState(initialUrl ?? '');
+  const [draft, setDraft] = useState(initialUrl ?? '');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState(null);
+  const [error, setError] = useState(null);
+
+  async function save(value) {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const updated = await api.updateModule(moduleId, {
+        quiz_form_url: value.trim(),
+      });
+      const url = updated.quiz_form_url ?? '';
+
+      // The server returns the cleaned-up embed URL; show that, not the paste.
+      setSavedUrl(url);
+      setDraft(url);
+      setMessage(url ? 'Quiz saved.' : 'Quiz removed.');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    save(draft);
+  }
+
+  return (
+    <section className="mt-12">
+      <h2 className="mb-2 font-serif text-xl font-semibold">
+        Practice quiz (Google Form)
+      </h2>
+      <p className="mb-4 text-sm text-ink/60">
+        Build the quiz in Google Forms, then in the form choose Send, open the
+        &lt; &gt; tab, and paste the embed code (or just its link) below. The
+        form must be open to anyone with the link, not restricted to an
+        organization, or it won't load inside the page.
+      </p>
+
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4 rounded border border-line bg-white px-5 py-4"
+      >
+        <div>
+          <label
+            htmlFor="quiz-form-url"
+            className="mb-1 block text-sm font-medium"
           >
-            + Add question
-          </button>
+            Google Form link or embed code
+          </label>
+          <textarea
+            id="quiz-form-url"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            rows={3}
+            placeholder="https://docs.google.com/forms/d/e/…/viewform?embedded=true"
+            className="w-full rounded border border-line px-3 py-2 font-mono text-sm"
+          />
         </div>
 
-        <form onSubmit={saveQuizQuestions} className="space-y-6">
-          {quizDrafts.map((question, questionIndex) => (
-            <div
-              key={questionIndex}
-              className="space-y-4 rounded border border-line bg-white px-5 py-4"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-medium">Question {questionIndex + 1}</h3>
+        {error && <p className="text-sm text-warn">{error}</p>}
+        {message && <p className="text-sm text-good">{message}</p>}
 
-                <button
-                  type="button"
-                  disabled={quizDrafts.length === 1}
-                  onClick={() =>
-                    setQuizDrafts((current) =>
-                      current.filter((_, index) => index !== questionIndex),
-                    )
-                  }
-                  className="text-sm text-warn disabled:opacity-40"
-                >
-                  Remove
-                </button>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  Question text
-                </label>
-
-                <textarea
-                  required
-                  value={question.prompt}
-                  onChange={(event) =>
-                    updateQuizDraft(questionIndex, 'prompt', event.target.value)
-                  }
-                  rows={3}
-                  className="w-full rounded border border-line px-3 py-2"
-                />
-              </div>
-
-              <div className="space-y-3">
-                <p className="text-sm font-medium">Answer choices</p>
-
-                {question.choices.map((choice, choiceIndex) => (
-                  <div key={choiceIndex}>
-                    <label className="mb-1 block text-sm text-ink/70">
-                      Choice {String.fromCharCode(65 + choiceIndex)}
-                    </label>
-
-                    <input
-                      required
-                      value={choice}
-                      onChange={(event) =>
-                        updateQuizChoice(
-                          questionIndex,
-                          choiceIndex,
-                          event.target.value,
-                        )
-                      }
-                      className="w-full rounded border border-line px-3 py-2"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  Correct answer
-                </label>
-
-                <select
-                  value={question.correct_choice}
-                  onChange={(event) =>
-                    updateQuizDraft(
-                      questionIndex,
-                      'correct_choice',
-                      Number(event.target.value),
-                    )
-                  }
-                  className="w-full rounded border border-line px-3 py-2"
-                >
-                  {question.choices.map((_, choiceIndex) => (
-                    <option key={choiceIndex} value={choiceIndex}>
-                      Choice {String.fromCharCode(65 + choiceIndex)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  Explanation (optional)
-                </label>
-
-                <textarea
-                  value={question.explanation}
-                  onChange={(event) =>
-                    updateQuizDraft(
-                      questionIndex,
-                      'explanation',
-                      event.target.value,
-                    )
-                  }
-                  rows={2}
-                  className="w-full rounded border border-line px-3 py-2"
-                />
-              </div>
-            </div>
-          ))}
-
-          {quizError && <p className="text-sm text-warn">{quizError}</p>}
-
-          {quizMessage && <p className="text-sm text-good">{quizMessage}</p>}
-
+        <div className="flex flex-wrap items-center gap-4">
           <button
             type="submit"
-            disabled={savingQuiz}
+            disabled={saving}
             className="rounded bg-accent-dark px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
-            {savingQuiz ? 'Saving questions…' : 'Save quiz questions'}
+            {saving ? 'Saving…' : 'Save quiz'}
           </button>
-        </form>
-      </section>
-    </div>
+
+          {savedUrl && (
+            <>
+              <Link
+                to={`/modules/${moduleId}/quiz`}
+                className="text-sm text-accent-dark hover:underline"
+              >
+                Preview as student
+              </Link>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => save('')}
+                className="text-sm text-warn disabled:opacity-40"
+              >
+                Remove quiz
+              </button>
+            </>
+          )}
+        </div>
+      </form>
+    </section>
   );
 }

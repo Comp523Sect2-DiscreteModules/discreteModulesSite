@@ -67,12 +67,14 @@ export default function LecturePage() {
         </article>
       ))}
 
-      <Link
-        to={`/modules/${module.id}/quiz`}
-        className="inline-block rounded bg-accent-dark px-4 py-2 font-medium text-white hover:bg-accent-dark/90"
-      >
-        Try the practice quiz
-      </Link>
+      {module.quiz_form_url && (
+        <Link
+          to={`/modules/${module.id}/quiz`}
+          className="inline-block rounded bg-accent-dark px-4 py-2 font-medium text-white hover:bg-accent-dark/90"
+        >
+          Try the practice quiz
+        </Link>
+      )}
     </div>
   );
 }

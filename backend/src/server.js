@@ -7,7 +7,6 @@ import { existsSync } from 'fs';
 import { pool } from './db.js';
 import modulesRouter from './routes/modules.js';
 import lessonsRouter from './routes/lessons.js';
-import quizRouter from './routes/quiz.js';
 
 const app = express();
 
@@ -30,7 +29,6 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/modules', modulesRouter);
 app.use('/api/lessons', lessonsRouter);
-app.use('/api/quiz', quizRouter);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distPath = path.join(__dirname, '..', '..', 'frontend', 'dist');
