@@ -2,8 +2,292 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Loosen line-height slightly for lesson prose, which mixes serif math
-   with sans body copy and needs a bit more breathing room than UI text. */
-.prose-lesson p {
-  line-height: 1.75;
+/* ------------------------------------------------------------------ */
+/* Theme tokens. Values are RGB channels so Tailwind opacity works.    */
+/* ------------------------------------------------------------------ */
+@layer base {
+  :root {
+    color-scheme: light;
+    --c-page: 244 246 248;
+    --c-surface: 255 255 255;
+    --c-surface-2: 241 244 247;
+    --c-surface-3: 235 239 243;
+    --c-line: 220 226 232;
+    --c-line-strong: 195 204 213;
+    --c-ink: 30 42 56;
+    --c-ink-2: 58 70 84;
+    --c-muted: 94 107 122;
+    --c-faint: 141 153 166;
+    --c-primary: 46 111 158;
+    --c-primary-hover: 36 90 130;
+    --c-primary-fg: 255 255 255;
+    --c-primary-soft: 240 246 251;
+    --c-primary-soft-2: 221 235 246;
+    --c-primary-line: 188 216 238;
+    --c-primary-ink: 36 90 130;
+    --c-success: 47 117 80;
+    --c-success-soft: 237 246 240;
+    --c-success-line: 197 224 208;
+    --c-success-ink: 42 104 71;
+    --c-danger: 179 55 47;
+    --c-danger-soft: 252 239 238;
+    --c-danger-line: 240 199 195;
+    --c-danger-ink: 142 42 35;
+    --c-warning: 176 122 20;
+    --c-warning-soft: 253 244 227;
+    --c-warning-ink: 138 83 0;
+    --c-theorem: 122 78 140;
+    --c-theorem-soft: 247 241 248;
+    --c-theorem-line: 222 201 229;
+    --c-theorem-ink: 99 63 115;
+    --c-hero: 19 50 74;
+
+    --shadow-xs: 0 1px 2px rgb(16 24 40 / 0.05);
+    --shadow-sm: 0 1px 3px rgb(16 24 40 / 0.08), 0 1px 2px rgb(16 24 40 / 0.04);
+    --shadow-md: 0 8px 20px -6px rgb(16 24 40 / 0.14);
+    --shadow-drawer: -16px 0 40px -16px rgb(0 0 0 / 0.35);
+  }
+
+  .dark {
+    color-scheme: dark;
+    --c-page: 14 20 27;
+    --c-surface: 21 29 39;
+    --c-surface-2: 25 34 45;
+    --c-surface-3: 28 37 49;
+    --c-line: 42 54 68;
+    --c-line-strong: 58 72 88;
+    --c-ink: 231 236 242;
+    --c-ink-2: 195 205 216;
+    --c-muted: 154 168 183;
+    --c-faint: 110 124 140;
+    --c-primary: 123 175 212;
+    --c-primary-hover: 156 199 231;
+    --c-primary-fg: 14 20 27;
+    --c-primary-soft: 22 37 54;
+    --c-primary-soft-2: 27 44 61;
+    --c-primary-line: 39 68 95;
+    --c-primary-ink: 156 199 231;
+    --c-success: 111 196 149;
+    --c-success-soft: 20 42 32;
+    --c-success-line: 36 81 58;
+    --c-success-ink: 142 211 172;
+    --c-danger: 240 138 128;
+    --c-danger-soft: 46 23 22;
+    --c-danger-line: 90 42 39;
+    --c-danger-ink: 245 166 158;
+    --c-warning: 217 164 65;
+    --c-warning-soft: 43 34 19;
+    --c-warning-ink: 232 191 115;
+    --c-theorem: 196 160 212;
+    --c-theorem-soft: 36 26 42;
+    --c-theorem-line: 74 52 86;
+    --c-theorem-ink: 214 186 226;
+    --c-hero: 10 22 34;
+
+    --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.45);
+    --shadow-md: 0 10px 24px -8px rgb(0 0 0 / 0.6);
+    --shadow-drawer: -16px 0 40px -16px rgb(0 0 0 / 0.7);
+  }
+
+  html {
+    scroll-padding-top: 5.5rem; /* clears the sticky navbar for #anchor jumps */
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--c-primary));
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: rgb(var(--c-primary-soft-2));
+  }
+
+  p,
+  li {
+    text-wrap: pretty;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Reusable component classes                                          */
+/* ------------------------------------------------------------------ */
+@layer components {
+  .btn {
+    @apply inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 text-[15px] font-semibold transition-colors duration-150 disabled:cursor-not-allowed;
+  }
+  .btn-sm {
+    @apply h-9 px-3.5 text-sm;
+  }
+  .btn-primary {
+    @apply bg-primary text-primary-fg hover:bg-primary-hover disabled:bg-surface-3 disabled:text-muted;
+  }
+  .btn-secondary {
+    @apply border border-line-strong bg-surface text-ink shadow-xs hover:border-primary hover:bg-primary-soft disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply text-ink-2 hover:bg-surface-3 hover:text-ink disabled:opacity-50;
+  }
+  .btn-danger-ghost {
+    @apply text-danger-ink hover:bg-danger-soft disabled:opacity-50;
+  }
+
+  .input {
+    @apply w-full rounded-md border border-line-strong bg-surface px-3.5 text-base text-ink transition-[border-color,box-shadow] duration-150 placeholder:text-faint focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary-soft-2 focus-visible:outline-none;
+  }
+  .label {
+    @apply mb-1.5 flex items-baseline justify-between text-sm font-semibold text-ink;
+  }
+  .hint {
+    @apply mt-1.5 text-meta text-muted;
+  }
+
+  .card {
+    @apply rounded-lg border border-line bg-surface shadow-xs;
+  }
+  /* Small caps label above titles ("Module 01", "Definition"). Not named
+     .overline because Tailwind already has an `overline` text-decoration utility. */
+  .eyebrow {
+    @apply text-overline uppercase;
+  }
+  .link {
+    @apply font-semibold text-primary underline-offset-2 hover:text-primary-hover hover:underline;
+  }
+
+  /* -------------------------------------------------------------- */
+  /* Lesson prose (rendered by MathContent.jsx)                      */
+  /* -------------------------------------------------------------- */
+  .prose-lesson {
+    font-family: theme('fontFamily.serif');
+    font-size: 1.125rem;
+    line-height: 1.75;
+    color: rgb(var(--c-ink));
+    overflow-wrap: break-word;
+  }
+  .prose-lesson > :first-child {
+    margin-top: 0;
+  }
+  .prose-lesson p {
+    margin: 0 0 1.1em;
+  }
+  /* Lesson "## " → h3, "### " → h4, so they sit below the lesson title (h2). */
+  .prose-lesson h3 {
+    margin: 2.2em 0 0.55em;
+    font-size: 1.3125rem;
+    line-height: 1.35;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  .prose-lesson h4 {
+    margin: 1.8em 0 0.45em;
+    font-family: theme('fontFamily.sans');
+    font-size: 1.1875rem;
+    line-height: 1.45;
+    font-weight: 600;
+  }
+  .prose-lesson ul {
+    margin: 0 0 1.1em;
+    padding-left: 1.4em;
+    list-style: disc;
+  }
+  .prose-lesson li {
+    margin: 0 0 0.35em;
+    padding-left: 0.25em;
+  }
+  .prose-lesson li::marker {
+    color: rgb(var(--c-muted));
+  }
+  .prose-lesson strong {
+    font-weight: 600;
+  }
+  .prose-lesson a {
+    color: rgb(var(--c-primary));
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  /* Display math: a quiet band that scrolls sideways on narrow screens. */
+  .prose-lesson mjx-container[jax='CHTML'][display='true'] {
+    margin: 0.5em 0;
+    padding: 0.35em 1rem;
+    border-radius: 10px;
+    background: rgb(var(--c-surface-2));
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  /* Compact variant for the admin preview pane. */
+  .prose-lesson-sm {
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+
+  /* Callouts, ready for when the lesson parser supports them.
+     Usage: <div class="callout callout-definition"><p class="callout-title">Definition</p>…</div> */
+  .callout {
+    margin: 0 0 1.25em;
+    padding: 1rem 1.25rem;
+    border: 1px solid;
+    border-radius: 12px;
+  }
+  .callout > :last-child {
+    margin-bottom: 0;
+  }
+  .callout-title {
+    margin: 0 0 0.35em !important;
+    font-family: theme('fontFamily.sans');
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .callout-definition {
+    background: rgb(var(--c-primary-soft));
+    border-color: rgb(var(--c-primary-line));
+  }
+  .callout-definition .callout-title {
+    color: rgb(var(--c-primary-ink));
+  }
+  .callout-theorem {
+    background: rgb(var(--c-theorem-soft));
+    border-color: rgb(var(--c-theorem-line));
+  }
+  .callout-theorem .callout-title {
+    color: rgb(var(--c-theorem-ink));
+  }
+  .callout-example {
+    background: rgb(var(--c-success-soft));
+    border-color: rgb(var(--c-success-line));
+  }
+  .callout-example .callout-title {
+    color: rgb(var(--c-success-ink));
+  }
+  .callout-proof {
+    padding: 0.9rem 0;
+    border-width: 1px 0;
+    border-color: rgb(var(--c-line));
+    border-radius: 0;
+  }
+  .callout-proof::after {
+    content: '∎';
+    display: block;
+    text-align: right;
+    color: rgb(var(--c-ink-2));
+  }
 }
