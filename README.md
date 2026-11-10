@@ -87,3 +87,41 @@ it:
 ```bash
 psql discrete_math_review -c "ALTER TABLE modules ADD COLUMN IF NOT EXISTS quiz_form_url TEXT; DROP TABLE IF EXISTS quiz_questions;"
 ```
+
+## Testing
+
+Automated tests use [Vitest](https://vitest.dev). See the team test plan for
+the full list of test cases and IDs (BU-, BR-, BI-, FU-).
+
+| Suite    | Location                          | What it covers                                                                                                              |
+| -------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Backend  | `backend/tests/`                  | Quiz-link validation, middleware, route behavior (mocked database), and API + real Postgres integration tests (supertest).  |
+| Frontend | `frontend/src/**/*.test.{js,jsx}` | API client, auth context, protected routes, login, lecture markdown renderer, and the student/admin pages (mocked `fetch`). |
+
+### One-time setup
+
+The backend integration tests run against a real Postgres database named
+`discrete_math_review_test`. They drop and recreate every table in it, so they
+refuse to run against any database whose name does not end in `_test`.
+
+```bash
+createdb discrete_math_review_test
+npm run install:all
+```
+
+The tests connect with the `PG*` settings from `backend/.env` (or from real
+environment variables, which take priority), but always use the
+`discrete_math_review_test` database. To use a different test database name, set
+`PGDATABASE_TEST`.
+
+### Running the tests
+
+```bash
+npm test                      # backend, then frontend
+npm --prefix backend test     # backend only
+npm --prefix frontend test    # frontend only
+npm --prefix backend run test:watch   # re-run on change (also in frontend)
+```
+
+CI (`.github/workflows/ci.yml`) runs both suites against a Postgres 16 service
+container on every pull request.
