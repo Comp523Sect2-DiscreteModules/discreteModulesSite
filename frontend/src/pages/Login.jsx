@@ -35,7 +35,7 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen bg-page">
-      <aside className="relative hidden flex-[0_0_44%] flex-col justify-between gap-10 overflow-hidden bg-hero px-14 py-11 text-[#E7F0F8] lg:flex">
+      <aside className="relative hidden flex-[0_0_44%] select-none flex-col items-center justify-between gap-10 overflow-hidden bg-hero px-14 py-11 text-center text-[#E7F0F8] lg:flex">
         <div className="flex items-center gap-2.5">
           <span className="grid h-[34px] w-[34px] place-items-center rounded-md bg-carolina-500 font-serif text-[19px] font-semibold leading-none text-[#0E141B]">
             ∀
@@ -44,10 +44,10 @@ export default function Login() {
             Discrete Math Review
           </span>
         </div>
-        <div className="flex max-w-[460px] flex-col gap-7">
+        <div className="flex max-w-[460px] flex-col items-center gap-7">
           <div
             ref={heroMath}
-            className="overflow-x-auto text-[30px] text-carolina-200"
+            className="text-[30px] text-carolina-200 [&_mjx-container]:!overflow-visible"
           >
             {'\\[\\forall x \\,\\big(P(x) \\rightarrow Q(x)\\big)\\]'}
           </div>
@@ -63,7 +63,7 @@ export default function Login() {
           <ThemeToggle />
         </div>
 
-        <div className="flex w-full max-w-[420px] items-center gap-2.5 lg:hidden">
+        <div className="flex w-full max-w-[420px] select-none items-center gap-2.5 lg:hidden">
           <BrandMark className="h-8 w-8 text-lg" />
           <span className="font-serif text-lg font-semibold">
             Discrete Math Review

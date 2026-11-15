@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
-import { CloseIcon, PlusIcon } from '../../components/Icons.jsx';
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  CloseIcon,
+  GripIcon,
+  PlusIcon,
+} from '../../components/Icons.jsx';
 import {
   ErrorState,
   PageShell,
@@ -34,6 +40,11 @@ export default function AdminDashboard() {
   const [slugTouched, setSlugTouched] = useState(false);
   const [filter, setFilter] = useState('all');
   const [pendingId, setPendingId] = useState(null);
+  const [actionError, setActionError] = useState(null);
+  const [dragId, setDragId] = useState(null);
+  const [overId, setOverId] = useState(null);
+  const [reordering, setReordering] = useState(false);
+  const [announcement, setAnnouncement] = useState('');
 
   function refresh() {
     api
@@ -46,12 +57,55 @@ export default function AdminDashboard() {
 
   async function handleTogglePublish(mod) {
     setPendingId(mod.id);
+    setActionError(null);
     try {
       await api.updateModule(mod.id, { published: !mod.published });
       refresh();
+    } catch (err) {
+      setActionError({
+        title: "Couldn't change visibility",
+        message: err.message,
+      });
     } finally {
       setPendingId(null);
     }
+  }
+
+  // Moves a module to a new position. The list updates immediately and is
+  // rolled back (and reloaded) if the server can't save the new order.
+  async function moveModule(id, toIndex) {
+    const from = modules.findIndex((m) => m.id === id);
+    if (reordering || from === -1 || from === toIndex) return;
+    if (toIndex < 0 || toIndex >= modules.length) return;
+
+    const previous = modules;
+    const next = [...modules];
+    const [moved] = next.splice(from, 1);
+    next.splice(toIndex, 0, moved);
+
+    setReordering(true);
+    setActionError(null);
+    setModules(next);
+    try {
+      setModules(await api.reorderModules(next.map((m) => m.id)));
+      setAnnouncement(
+        `Moved ${moved.title} to position ${toIndex + 1} of ${next.length}.`,
+      );
+    } catch (err) {
+      setModules(previous);
+      setActionError({
+        title: "Couldn't reorder modules",
+        message: err.message,
+      });
+      refresh();
+    } finally {
+      setReordering(false);
+    }
+  }
+
+  function endDrag() {
+    setDragId(null);
+    setOverId(null);
   }
 
   async function handleCreate(e) {
@@ -90,6 +144,19 @@ export default function AdminDashboard() {
       filter === 'all' || (filter === 'published' ? m.published : !m.published),
   );
   const order = new Map(list.map((m, i) => [m.id, i + 1]));
+  // Reordering only makes sense on the full list; a filtered view hides the
+  // modules that sit between the visible ones.
+  const canReorder = filter === 'all' && list.length > 1;
+
+  // Line above/below the row under the dragged module, showing where it lands.
+  function dropIndicator(id) {
+    if (dragId === null || overId !== id || dragId === id) return '';
+    const from = list.findIndex((m) => m.id === dragId);
+    const to = list.findIndex((m) => m.id === id);
+    return from > to
+      ? 'shadow-[inset_0_2px_0_rgb(var(--c-primary))]'
+      : 'shadow-[inset_0_-2px_0_rgb(var(--c-primary))]';
+  }
 
   return (
     <PageShell>
@@ -114,11 +181,20 @@ export default function AdminDashboard() {
         </button>
       </header>
 
+      {actionError && (
+        <div className="mb-4">
+          <ErrorState title={actionError.title} message={actionError.message} />
+        </div>
+      )}
+      <p role="status" className="sr-only">
+        {announcement}
+      </p>
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div
           role="group"
           aria-label="Filter modules"
-          className="inline-flex gap-0.5 rounded-lg bg-surface-3 p-[3px]"
+          className="inline-flex gap-0.5 rounded-lg border border-line-strong bg-surface-3 p-[3px]"
         >
           {FILTERS.map((f) => {
             const on = filter === f.id;
@@ -130,7 +206,7 @@ export default function AdminDashboard() {
                 onClick={() => setFilter(f.id)}
                 className={`inline-flex h-[34px] items-center gap-2 rounded-md px-3 text-sm font-semibold transition-colors ${
                   on
-                    ? 'bg-surface text-ink shadow-xs ring-1 ring-line'
+                    ? 'bg-surface text-ink shadow-xs ring-1 ring-line-strong'
                     : 'text-ink-2 hover:text-ink'
                 }`}
               >
@@ -148,7 +224,13 @@ export default function AdminDashboard() {
             );
           })}
         </div>
-        <span className="text-sm text-muted">Sorted by module order</span>
+        <span className="text-sm text-muted">
+          {!canReorder
+            ? modules && modules.length > 1
+              ? 'Switch to All to change the order'
+              : 'Sorted by module order'
+            : 'Drag the grip or use the arrows to reorder'}
+        </span>
       </div>
 
       {/* Desktop table */}
@@ -159,12 +241,12 @@ export default function AdminDashboard() {
       >
         <div
           role="row"
-          className="grid grid-cols-[44px_minmax(0,2.6fr)_minmax(180px,1.3fr)_80px_88px] items-center gap-4 bg-surface-2 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-muted"
+          className="grid grid-cols-[64px_minmax(0,2.6fr)_minmax(180px,1.3fr)_72px_88px] items-center gap-4 bg-surface-2 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-muted"
         >
           <span role="columnheader">#</span>
           <span role="columnheader">Module</span>
           <span role="columnheader">Visibility</span>
-          <span role="columnheader">Lessons</span>
+          <span role="columnheader">Order</span>
           <span role="columnheader">
             <span className="sr-only">Actions</span>
           </span>
@@ -174,7 +256,7 @@ export default function AdminDashboard() {
           [0, 1, 2].map((i) => (
             <div
               key={i}
-              className="grid grid-cols-[44px_minmax(0,2.6fr)_minmax(180px,1.3fr)_80px_88px] items-center gap-4 border-t border-line px-5 py-4"
+              className="grid grid-cols-[64px_minmax(0,2.6fr)_minmax(180px,1.3fr)_72px_88px] items-center gap-4 border-t border-line px-5 py-4"
               aria-hidden="true"
             >
               <Skeleton className="h-3 w-5" />
@@ -183,7 +265,7 @@ export default function AdminDashboard() {
                 <Skeleton className="h-3 w-1/3" />
               </div>
               <Skeleton className="h-5 w-24" />
-              <Skeleton className="h-3 w-4" />
+              <Skeleton className="h-7 w-14" />
               <Skeleton className="ml-auto h-8 w-14" />
             </div>
           ))}
@@ -192,9 +274,42 @@ export default function AdminDashboard() {
           <div
             key={m.id}
             role="row"
-            className="grid grid-cols-[44px_minmax(0,2.6fr)_minmax(180px,1.3fr)_80px_88px] items-center gap-4 border-t border-line px-5 py-3.5 transition-colors hover:bg-surface-2"
+            draggable={canReorder && !reordering}
+            onDragStart={(e) => {
+              setDragId(m.id);
+              e.dataTransfer.effectAllowed = 'move';
+              e.dataTransfer.setData('text/plain', String(m.id));
+            }}
+            onDragOver={(e) => {
+              if (dragId === null) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              if (overId !== m.id) setOverId(m.id);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              moveModule(
+                dragId,
+                list.findIndex((x) => x.id === m.id),
+              );
+              endDrag();
+            }}
+            onDragEnd={endDrag}
+            className={`grid grid-cols-[64px_minmax(0,2.6fr)_minmax(180px,1.3fr)_72px_88px] items-center gap-4 border-t border-line px-5 py-3.5 transition-colors hover:bg-surface-2 ${
+              dragId === m.id ? 'opacity-40' : ''
+            } ${dropIndicator(m.id)}`}
           >
-            <span role="cell" className="font-mono text-meta text-muted">
+            <span
+              role="cell"
+              className="flex items-center gap-1.5 font-mono text-meta text-muted"
+            >
+              <GripIcon
+                className={`h-4 w-4 shrink-0 ${
+                  canReorder
+                    ? 'cursor-grab text-faint active:cursor-grabbing'
+                    : 'invisible'
+                }`}
+              />
               {String(order.get(m.id)).padStart(2, '0')}
             </span>
             <div role="cell" className="flex min-w-0 flex-col gap-0.5">
@@ -213,13 +328,16 @@ export default function AdminDashboard() {
               />
               <PublishBadge published={m.published} />
             </div>
-            <span
-              role="cell"
-              title="Lesson counts aren't returned by the modules API yet"
-              className="text-muted"
-            >
-              —
-            </span>
+            <div role="cell">
+              <ReorderButtons
+                title={m.title}
+                index={list.findIndex((x) => x.id === m.id)}
+                count={list.length}
+                disabled={!canReorder || reordering}
+                onMove={moveModule}
+                id={m.id}
+              />
+            </div>
             <div role="cell" className="flex justify-end">
               <Link
                 to={`/admin/modules/${m.id}`}
@@ -275,6 +393,16 @@ export default function AdminDashboard() {
               <span className="text-sm font-semibold text-ink-2">
                 {m.published ? 'Published' : 'Draft'}
               </span>
+              <div className="ml-auto">
+                <ReorderButtons
+                  title={m.title}
+                  index={list.findIndex((x) => x.id === m.id)}
+                  count={list.length}
+                  disabled={!canReorder || reordering}
+                  onMove={moveModule}
+                  id={m.id}
+                />
+              </div>
             </div>
           </li>
         ))}
@@ -300,6 +428,35 @@ export default function AdminDashboard() {
         />
       )}
     </PageShell>
+  );
+}
+
+function ReorderButtons({ id, title, index, count, disabled, onMove }) {
+  const btn =
+    'grid h-7 w-7 place-items-center rounded-md border border-line-strong bg-surface text-ink-2 transition-colors hover:border-primary hover:bg-primary-soft hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line-strong disabled:hover:bg-surface';
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        aria-label={`Move ${title} up`}
+        title="Move up"
+        disabled={disabled || index <= 0}
+        onClick={() => onMove(id, index - 1)}
+        className={btn}
+      >
+        <ChevronUpIcon />
+      </button>
+      <button
+        type="button"
+        aria-label={`Move ${title} down`}
+        title="Move down"
+        disabled={disabled || index >= count - 1}
+        onClick={() => onMove(id, index + 1)}
+        className={btn}
+      >
+        <ChevronDownIcon />
+      </button>
+    </div>
   );
 }
 

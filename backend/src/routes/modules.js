@@ -71,6 +71,50 @@ router.post(
   }),
 );
 
+// PUT /api/modules/reorder  (admin only) -> set the display order.
+// Body: { ids: [3, 1, 2] } listing EVERY module id in the new order. Must be
+// registered before '/:id' so "reorder" isn't read as a module id.
+router.put(
+  '/reorder',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { ids } = req.body;
+
+    if (
+      !Array.isArray(ids) ||
+      !ids.every((n) => Number.isInteger(n) && n > 0) ||
+      new Set(ids).size !== ids.length
+    ) {
+      return res
+        .status(400)
+        .json({ error: 'ids must be a list of unique module ids.' });
+    }
+
+    const { rows: existing } = await pool.query('SELECT id FROM modules');
+    const known = new Set(existing.map((r) => r.id));
+    if (ids.length !== known.size || !ids.every((n) => known.has(n))) {
+      return res.status(409).json({
+        error:
+          'The module list changed since you loaded it. Refresh and try again.',
+      });
+    }
+
+    // One statement, so the new order is applied all at once or not at all.
+    await pool.query(
+      `UPDATE modules m
+       SET order_index = v.position
+       FROM unnest($1::int[]) WITH ORDINALITY AS v(id, position)
+       WHERE m.id = v.id`,
+      [ids],
+    );
+
+    const { rows } = await pool.query(
+      'SELECT * FROM modules ORDER BY order_index, id',
+    );
+    res.json(rows);
+  }),
+);
+
 // PUT /api/modules/:id  (admin only) -> edit title/description/published and
 // the module's practice-quiz Google Form.
 //

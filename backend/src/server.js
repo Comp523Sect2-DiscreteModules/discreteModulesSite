@@ -73,6 +73,20 @@ async function start() {
     process.exit(1);
   }
 
+  // Databases created before quizzes moved to Google Forms lack this column,
+  // which makes every module update (including the publish toggle) fail with
+  // a 500. Adding it is safe to repeat, so just make sure it's there.
+  try {
+    await pool.query(
+      'ALTER TABLE modules ADD COLUMN IF NOT EXISTS quiz_form_url TEXT',
+    );
+  } catch (err) {
+    console.warn(
+      `Could not ensure modules.quiz_form_url exists (${err.message}). ` +
+        'Module updates will fail until it is added; see the README.',
+    );
+  }
+
   if (!existsSync(path.join(distPath, 'index.html'))) {
     console.warn(
       'Frontend build not found (frontend/dist). Fine in dev: use the Vite ' +

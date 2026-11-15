@@ -3,8 +3,7 @@
 
 INSERT INTO modules (slug, title, description, published, order_index) VALUES
   ('propositional-logic', 'Propositional Logic', 'Statements, connectives, truth tables, and logical equivalence.', true, 1),
-  ('set-theory', 'Set Theory', 'Sets, operations, and set identities.', true, 2),
-  ('induction-draft', 'Mathematical Induction (draft)', 'Not yet ready for students.', false, 3);
+  ('set-theory', 'Set Theory', 'Sets, operations, and set identities.', true, 2);
 
 -- Using dollar-quoting ($lesson$ ... $lesson$) for the lesson body so we can
 -- write literal backslashes (needed for LaTeX commands like \neg, \land)
