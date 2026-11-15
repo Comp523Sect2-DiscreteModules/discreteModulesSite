@@ -158,4 +158,20 @@ router.put(
   }),
 );
 
+// DELETE /api/modules/:id  (admin only) -> delete a module and, via the
+// foreign key's ON DELETE CASCADE, all of its lessons.
+router.delete(
+  '/:id',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { rowCount } = await pool.query('DELETE FROM modules WHERE id = $1', [
+      req.params.id,
+    ]);
+    if (rowCount === 0) {
+      return res.status(404).json({ error: 'Module not found.' });
+    }
+    res.status(204).end();
+  }),
+);
+
 export default router;

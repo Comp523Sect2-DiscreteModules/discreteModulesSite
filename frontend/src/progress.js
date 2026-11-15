@@ -7,7 +7,10 @@
 //
 // Lifecycle of a module:
 //   not started -> in progress (student opens it)
-//   in progress -> completed   (scrolls to the end, or opens the practice quiz)
+//   in progress -> completed   (scrolls to the end of the lesson text)
+//
+// Only reaching the end completes a module. Opening the practice quiz does
+// not, so a lesson can't be completed without reading down to the bottom.
 
 export const STATUS = {
   NOT_STARTED: 'not_started',
@@ -15,15 +18,12 @@ export const STATUS = {
   COMPLETED: 'completed',
 };
 
-// Scrolling this far through a lesson counts as having finished it.
-export const FINISHED_AT = 0.97;
-
 function storageKey() {
   try {
     const user = JSON.parse(localStorage.getItem('dmra_mock_user'));
-    return `dmra_progress:${user?.name ?? 'anonymous'}`;
+    return `dmra_progress_v2:${user?.name ?? 'anonymous'}`;
   } catch {
-    return 'dmra_progress:anonymous';
+    return 'dmra_progress_v2:anonymous';
   }
 }
 
@@ -73,10 +73,13 @@ export function markStarted(moduleId) {
 }
 
 // Record how far (0-1) the student has read. Only ever moves forward, and
-// reaching the end completes the module.
+// never reaches 100: that takes markCompleted, which the lecture page calls
+// once the student has actually reached the end of the text.
 export function recordReading(moduleId, fraction) {
-  if (fraction >= FINISHED_AT) return markCompleted(moduleId);
-  const percent = Math.round(Math.min(1, Math.max(0, fraction)) * 100);
+  const percent = Math.min(
+    99,
+    Math.round(Math.min(1, Math.max(0, fraction)) * 100),
+  );
   update(moduleId, (p) => {
     if (p.status === STATUS.COMPLETED) return p;
     if (p.status === STATUS.IN_PROGRESS && percent <= p.percent) return p;

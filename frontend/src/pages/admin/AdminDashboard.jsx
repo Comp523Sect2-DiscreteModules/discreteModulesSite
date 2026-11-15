@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
+import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import {
   ChevronDownIcon,
   ChevronUpIcon,
   CloseIcon,
   GripIcon,
   PlusIcon,
+  TrashIcon,
 } from '../../components/Icons.jsx';
 import {
   ErrorState,
@@ -44,6 +46,7 @@ export default function AdminDashboard() {
   const [dragId, setDragId] = useState(null);
   const [overId, setOverId] = useState(null);
   const [reordering, setReordering] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [announcement, setAnnouncement] = useState('');
 
   function refresh() {
@@ -101,6 +104,12 @@ export default function AdminDashboard() {
     } finally {
       setReordering(false);
     }
+  }
+
+  async function handleDelete() {
+    await api.deleteModule(deleteTarget.id);
+    setAnnouncement(`Deleted ${deleteTarget.title}.`);
+    refresh();
   }
 
   function endDrag() {
@@ -241,7 +250,7 @@ export default function AdminDashboard() {
       >
         <div
           role="row"
-          className="grid grid-cols-[64px_minmax(0,2.6fr)_minmax(180px,1.3fr)_72px_88px] items-center gap-4 bg-surface-2 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-muted"
+          className="grid grid-cols-[64px_minmax(0,2.6fr)_minmax(180px,1.3fr)_72px_124px] items-center gap-4 bg-surface-2 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.06em] text-muted"
         >
           <span role="columnheader">#</span>
           <span role="columnheader">Module</span>
@@ -256,7 +265,7 @@ export default function AdminDashboard() {
           [0, 1, 2].map((i) => (
             <div
               key={i}
-              className="grid grid-cols-[64px_minmax(0,2.6fr)_minmax(180px,1.3fr)_72px_88px] items-center gap-4 border-t border-line px-5 py-4"
+              className="grid grid-cols-[64px_minmax(0,2.6fr)_minmax(180px,1.3fr)_72px_124px] items-center gap-4 border-t border-line px-5 py-4"
               aria-hidden="true"
             >
               <Skeleton className="h-3 w-5" />
@@ -295,7 +304,7 @@ export default function AdminDashboard() {
               endDrag();
             }}
             onDragEnd={endDrag}
-            className={`grid grid-cols-[64px_minmax(0,2.6fr)_minmax(180px,1.3fr)_72px_88px] items-center gap-4 border-t border-line px-5 py-3.5 transition-colors hover:bg-surface-2 ${
+            className={`grid grid-cols-[64px_minmax(0,2.6fr)_minmax(180px,1.3fr)_72px_124px] items-center gap-4 border-t border-line px-5 py-3.5 transition-colors hover:bg-surface-2 ${
               dragId === m.id ? 'opacity-40' : ''
             } ${dropIndicator(m.id)}`}
           >
@@ -338,7 +347,8 @@ export default function AdminDashboard() {
                 id={m.id}
               />
             </div>
-            <div role="cell" className="flex justify-end">
+            <div role="cell" className="flex items-center justify-end gap-2">
+              <DeleteButton module={m} onClick={setDeleteTarget} />
               <Link
                 to={`/admin/modules/${m.id}`}
                 className="btn btn-sm btn-secondary h-[34px]"
@@ -377,12 +387,15 @@ export default function AdminDashboard() {
                   {m.slug}
                 </span>
               </div>
-              <Link
-                to={`/admin/modules/${m.id}`}
-                className="btn btn-sm btn-secondary"
-              >
-                Edit
-              </Link>
+              <div className="flex items-center gap-2">
+                <DeleteButton module={m} onClick={setDeleteTarget} />
+                <Link
+                  to={`/admin/modules/${m.id}`}
+                  className="btn btn-sm btn-secondary"
+                >
+                  Edit
+                </Link>
+              </div>
             </div>
             <div className="flex items-center gap-2.5 border-t border-line pt-3">
               <PublishSwitch
@@ -413,6 +426,26 @@ export default function AdminDashboard() {
         )}
       </ul>
 
+      {deleteTarget && (
+        <ConfirmDialog
+          title={`Delete "${deleteTarget.title}"?`}
+          confirmLabel="Delete module"
+          onConfirm={handleDelete}
+          onClose={() => setDeleteTarget(null)}
+        >
+          <p>
+            This permanently deletes the module and all of its lessons
+            {deleteTarget.quiz_form_url ? ' and its quiz link' : ''}. This can't
+            be undone.
+          </p>
+          {deleteTarget.published && (
+            <p className="mt-2">
+              It's published, so students will lose access to it immediately.
+            </p>
+          )}
+        </ConfirmDialog>
+      )}
+
       {creating && (
         <NewModuleDrawer
           value={newModule}
@@ -428,6 +461,20 @@ export default function AdminDashboard() {
         />
       )}
     </PageShell>
+  );
+}
+
+function DeleteButton({ module: m, onClick }) {
+  return (
+    <button
+      type="button"
+      aria-label={`Delete ${m.title}`}
+      title="Delete module"
+      onClick={() => onClick(m)}
+      className="grid h-[34px] w-[34px] place-items-center rounded-md border border-line-strong bg-surface text-danger-ink transition-colors hover:border-danger hover:bg-danger-soft"
+    >
+      <TrashIcon className="h-4 w-4" />
+    </button>
   );
 }
 
