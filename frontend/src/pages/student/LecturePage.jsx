@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
 import {
@@ -49,10 +49,31 @@ export default function LecturePage() {
     () => outline.flatMap((l) => [l.id, ...l.headings.map((h) => h.id)]),
     [outline],
   );
-  const { progress, activeId, scrollable } = useReadingPosition(allIds);
+  const articleRef = useRef(null);
+  const endRef = useRef(null);
+  const [ready, setReady] = useState(false);
+  const { progress, activeId, reached } = useReadingPosition(
+    allIds,
+    articleRef,
+    endRef,
+  );
   const [status, setStatus] = useState(
     () => getModuleProgress(moduleId).status,
   );
+
+  // Don't measure reading until math, fonts and layout have settled: before
+  // that the page is shorter than it will end up, so "the bottom" is wrong.
+  useEffect(() => {
+    if (!module) return;
+    let cancelled = false;
+    setReady(false);
+    waitForLayout().then(() => {
+      if (!cancelled) setReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [module]);
 
   // Opening a module starts it.
   useEffect(() => {
@@ -61,28 +82,28 @@ export default function LecturePage() {
     setStatus(getModuleProgress(module.id).status);
   }, [module]);
 
-  // Save how far the student has scrolled; reaching the end completes it.
+  // Save how far through the lesson text the student has scrolled.
   useEffect(() => {
-    if (!module || !scrollable) return;
+    if (!module || !ready) return;
     recordReading(module.id, progress);
     setStatus(getModuleProgress(module.id).status);
-  }, [module, progress, scrollable]);
+  }, [module, ready, progress]);
 
-  // A short module that fits on one screen can't be scrolled, so count it as
-  // read after a few seconds (long enough for math and video to finish laying
-  // out, which would make the page scrollable and cancel this).
+  // Completed once the end of the last lesson has stayed in view. If the
+  // student has scrolled, a brief pause is enough (it rules out a layout
+  // shift flashing past the end). If the whole module fit on screen with no
+  // scrolling, wait a few seconds so it isn't completed by merely opening it.
   useEffect(() => {
-    if (!module || scrollable || module.lessons.length === 0) return;
-    const t = setTimeout(() => {
-      markCompleted(module.id);
-      setStatus(getModuleProgress(module.id).status);
-    }, 3000);
+    if (!module || !ready || !reached || module.lessons.length === 0) return;
+    const t = setTimeout(
+      () => {
+        markCompleted(module.id);
+        setStatus(getModuleProgress(module.id).status);
+      },
+      window.scrollY > 0 ? 500 : 4000,
+    );
     return () => clearTimeout(t);
-  }, [module, scrollable]);
-
-  function handleQuizClick() {
-    markCompleted(module.id);
-  }
+  }, [module, ready, reached]);
 
   if (error) {
     return (
@@ -146,7 +167,6 @@ export default function LecturePage() {
               <QuizLink
                 moduleId={module.id}
                 url={module.quiz_form_url}
-                onClick={handleQuizClick}
                 className="btn btn-secondary justify-between rounded-lg"
                 iconClassName="h-4 w-4 text-primary"
               >
@@ -155,7 +175,10 @@ export default function LecturePage() {
             )}
           </aside>
 
-          <article className="min-w-0 max-w-reading flex-1 pb-24 pt-6 sm:pt-12">
+          <article
+            ref={articleRef}
+            className="min-w-0 max-w-reading flex-1 pb-24 pt-6 sm:pt-12"
+          >
             <Link
               to="/"
               className="link mb-4 inline-flex items-center gap-1.5 text-sm lg:hidden"
@@ -246,6 +269,10 @@ export default function LecturePage() {
               </section>
             ))}
 
+            {/* Marks where the lesson text ends; reaching it is what
+                completes the module (the quiz card below doesn't count). */}
+            <div ref={endRef} aria-hidden="true" />
+
             {module.quiz_form_url && (
               <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4 rounded-xl border border-primary-line bg-primary-soft p-5 sm:p-7">
                 <div className="flex min-w-[16rem] flex-1 flex-col gap-1">
@@ -259,7 +286,6 @@ export default function LecturePage() {
                 <QuizLink
                   moduleId={module.id}
                   url={module.quiz_form_url}
-                  onClick={handleQuizClick}
                   className="btn btn-primary"
                 >
                   Start practice quiz
@@ -328,34 +354,76 @@ function Outline({ outline, activeId }) {
   );
 }
 
-// Tracks scroll progress (0–1), whether the page scrolls at all, and which
-// outline target the reader is on.
-function useReadingPosition(ids) {
+// Resolves once MathJax has typeset the page and fonts are loaded (or after a
+// timeout, so a blocked CDN can't leave the page waiting forever).
+function waitForLayout() {
+  const mathReady = new Promise((resolve) => {
+    const started = Date.now();
+    (function check() {
+      const mj = window.MathJax;
+      if (mj?.typesetPromise) {
+        Promise.resolve(mj.startup?.promise)
+          .then(() => mj.typesetPromise([document.body]))
+          .catch(() => {})
+          .then(resolve);
+      } else if (Date.now() - started > 6000) {
+        resolve();
+      } else {
+        setTimeout(check, 100);
+      }
+    })();
+  });
+  const fontsReady = document.fonts?.ready ?? Promise.resolve();
+  return Promise.all([mathReady, fontsReady]).then(
+    () =>
+      new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      ),
+  );
+}
+
+// Tracks how far through the lesson text the reader is (0-1), whether they've
+// reached its end, and which outline target they're on.
+//
+// Progress is measured against the lesson text itself, not the whole page:
+// 0 at the top, and 1 exactly when the bottom edge of the screen reaches the
+// end marker. The quiz card and the padding under the text don't count, and
+// layout growth after load is picked up by the ResizeObserver below.
+function useReadingPosition(ids, articleRef, endRef) {
   const [state, setState] = useState({
     progress: 0,
     activeId: null,
-    scrollable: false,
+    reached: false,
   });
 
   useEffect(() => {
     let frame = null;
     function update() {
       frame = null;
-      const doc = document.documentElement;
-      const max = doc.scrollHeight - window.innerHeight;
-      const progress =
-        max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+      const article = articleRef.current;
+      const end = endRef.current;
+      let progress = 0;
+      let reached = false;
+      if (article && end) {
+        const bottom = end.getBoundingClientRect().bottom + window.scrollY;
+        // The scroll position at which the end marker reaches the screen's
+        // bottom edge; progress is how far along that distance we've scrolled.
+        const endScroll = bottom - window.innerHeight;
+        reached = window.scrollY + 2 >= endScroll;
+        progress = reached
+          ? 1
+          : Math.min(1, Math.max(0, window.scrollY / Math.max(1, endScroll)));
+      }
       let activeId = ids[0] ?? null;
       for (const id of ids) {
         const el = document.getElementById(id);
         if (el && el.getBoundingClientRect().top < 140) activeId = id;
       }
-      const scrollable = max > 0;
       setState((s) =>
         Math.abs(s.progress - progress) > 0.002 ||
         s.activeId !== activeId ||
-        s.scrollable !== scrollable
-          ? { progress, activeId, scrollable }
+        s.reached !== reached
+          ? { progress, activeId, reached }
           : s,
       );
     }
@@ -365,12 +433,19 @@ function useReadingPosition(ids) {
     update();
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
+    // Math typesetting, fonts and images change the text's height after load.
+    const observer =
+      articleRef.current && typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(onScroll)
+        : null;
+    if (observer) observer.observe(articleRef.current);
     return () => {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
+      observer?.disconnect();
       if (frame != null) cancelAnimationFrame(frame);
     };
-  }, [ids]);
+  }, [ids, articleRef, endRef]);
 
   return state;
 }

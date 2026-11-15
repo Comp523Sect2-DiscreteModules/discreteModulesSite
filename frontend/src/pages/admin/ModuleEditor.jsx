@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
+import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import MarkdownToolbar, {
   handleFormatShortcut,
 } from '../../components/MarkdownToolbar.jsx';
@@ -10,6 +11,7 @@ import {
   CheckIcon,
   ExternalIcon,
   PlusIcon,
+  TrashIcon,
 } from '../../components/Icons.jsx';
 import QuizLink from '../../components/QuizLink.jsx';
 import { ErrorState, PublishBadge, Skeleton } from '../../components/ui.jsx';
@@ -17,6 +19,8 @@ import { isEmbeddedForm } from '../../quiz.js';
 
 export default function ModuleEditor() {
   const { moduleId } = useParams();
+  const navigate = useNavigate();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [module, setModule] = useState(null);
   const [error, setError] = useState(null);
   const [savingModule, setSavingModule] = useState(false);
@@ -49,6 +53,11 @@ export default function ModuleEditor() {
     } finally {
       setSavingModule(false);
     }
+  }
+
+  async function deleteModule() {
+    await api.deleteModule(moduleId);
+    navigate('/admin');
   }
 
   async function addLesson() {
@@ -194,6 +203,7 @@ export default function ModuleEditor() {
               lesson={lesson}
               index={i}
               onSaved={refresh}
+              onDeleted={refresh}
             />
           ))}
 
@@ -212,14 +222,55 @@ export default function ModuleEditor() {
           moduleId={module.id}
           initialUrl={module.quiz_form_url}
         />
+
+        <section
+          aria-labelledby="danger-h"
+          className="flex flex-wrap items-center justify-between gap-4 rounded-[14px] border border-danger-line bg-danger-soft p-5"
+        >
+          <div className="flex min-w-[16rem] flex-1 flex-col gap-1">
+            <h2
+              id="danger-h"
+              className="text-base font-semibold text-danger-ink"
+            >
+              Delete this module
+            </h2>
+            <p className="text-sm text-danger-ink">
+              Permanently removes the module, all of its lessons and its quiz
+              link.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setConfirmingDelete(true)}
+            className="btn btn-sm h-[38px] border border-danger-line bg-surface text-danger-ink hover:bg-danger-soft"
+          >
+            <TrashIcon /> Delete module
+          </button>
+        </section>
       </div>
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title={`Delete "${module.title}"?`}
+          confirmLabel="Delete module"
+          onConfirm={deleteModule}
+          onClose={() => setConfirmingDelete(false)}
+        >
+          <p>
+            This permanently deletes the module and all {module.lessons.length}{' '}
+            {module.lessons.length === 1 ? 'lesson' : 'lessons'} in it. This
+            can't be undone.
+          </p>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }
 
 // One lesson. Each card owns its own editing state, so any number of lessons
 // can be open for editing at the same time.
-function LessonCard({ lesson, index, onSaved }) {
+function LessonCard({ lesson, index, onSaved, onDeleted }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   // Which lines of the draft are being edited inside the preview, if any.
@@ -245,6 +296,11 @@ function LessonCard({ lesson, index, onSaved }) {
     return active?.tagName === 'TEXTAREA' && editorRef.current?.contains(active)
       ? active
       : writeRef.current;
+  }
+
+  async function deleteLesson() {
+    await api.deleteLesson(lesson.id);
+    onDeleted();
   }
 
   async function save() {
@@ -291,7 +347,31 @@ function LessonCard({ lesson, index, onSaved }) {
             Edit content
           </button>
         )}
+        <button
+          type="button"
+          aria-label={`Delete lesson ${lesson.title}`}
+          title="Delete lesson"
+          onClick={() => setConfirmingDelete(true)}
+          className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-md border border-line-strong bg-surface text-danger-ink transition-colors hover:border-danger hover:bg-danger-soft"
+        >
+          <TrashIcon className="h-4 w-4" />
+        </button>
       </div>
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title={`Delete "${lesson.title}"?`}
+          confirmLabel="Delete lesson"
+          onConfirm={deleteLesson}
+          onClose={() => setConfirmingDelete(false)}
+        >
+          <p>
+            This permanently deletes the lesson and its content
+            {dirty ? ', including your unsaved changes' : ''}. This can't be
+            undone.
+          </p>
+        </ConfirmDialog>
+      )}
 
       {editing ? (
         <div

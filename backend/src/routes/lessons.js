@@ -56,4 +56,19 @@ router.put(
   }),
 );
 
+// DELETE /api/lessons/:id  (admin only) -> remove a lesson from its module
+router.delete(
+  '/:id',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { rowCount } = await pool.query('DELETE FROM lessons WHERE id = $1', [
+      req.params.id,
+    ]);
+    if (rowCount === 0) {
+      return res.status(404).json({ error: 'Lesson not found.' });
+    }
+    res.status(204).end();
+  }),
+);
+
 export default router;
