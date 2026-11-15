@@ -50,7 +50,7 @@ npm --prefix backend ci && npm --prefix frontend ci && npm run build
 
 and the start command is `npm start`.
 
-## Practice quizzes (Google Forms)
+## Practice quizzes (Google Forms or an external link)
 
 Each module's practice quiz is a Google Form embedded on the quiz page. The app
 only stores the form's link; Google handles the questions, grading, and
@@ -74,8 +74,10 @@ To add a quiz to a module:
    quiz (Google Form)**, then **Save quiz**. Use **Preview as student** to check
    it, and **Remove quiz** to take it down.
 
-Only `docs.google.com` form links are accepted, and the "Try the practice quiz"
-button only appears for modules that have a quiz.
+**Quizzes on other sites.** The link doesn't have to be a Google Form. Paste any
+`http(s)` link and students get a button that opens it in a new tab (it is not
+embedded). Google Form links are the only ones embedded in the page. The
+"Try the practice quiz" button only appears for modules that have a quiz.
 
 ### Upgrading an existing database
 

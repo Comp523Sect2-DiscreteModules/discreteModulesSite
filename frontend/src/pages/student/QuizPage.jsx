@@ -8,6 +8,7 @@ import {
   ExternalIcon,
 } from '../../components/Icons.jsx';
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui.jsx';
+import { isEmbeddedForm, quizHostname, safeExternalUrl } from '../../quiz.js';
 
 // The embed URL carries ?embedded=true, which hides some Google chrome. The
 // "open in a new tab" fallback should show the normal full-page form instead.
@@ -106,7 +107,31 @@ export default function QuizPage() {
           </EmptyState>
         )}
 
-        {module?.quiz_form_url && (
+        {module?.quiz_form_url && !isEmbeddedForm(module.quiz_form_url) && (
+          <EmptyState
+            glyph="?"
+            title="This quiz is on another site"
+            action={
+              safeExternalUrl(module.quiz_form_url) && (
+                <a
+                  href={safeExternalUrl(module.quiz_form_url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primary"
+                >
+                  Open quiz
+                  <ExternalIcon />
+                  <span className="sr-only">(opens in a new tab)</span>
+                </a>
+              )
+            }
+          >
+            The practice quiz for {module.title} is hosted on{' '}
+            {quizHostname(module.quiz_form_url)}. It opens in a new tab.
+          </EmptyState>
+        )}
+
+        {module?.quiz_form_url && isEmbeddedForm(module.quiz_form_url) && (
           <>
             <div className="mb-5 flex flex-col gap-1.5">
               <span className="eyebrow text-primary-ink">Practice quiz</span>

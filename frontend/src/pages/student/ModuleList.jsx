@@ -8,6 +8,7 @@ import {
   ErrorState,
   PageShell,
   ProgressBadge,
+  PublishBadge,
   Skeleton,
 } from '../../components/ui.jsx';
 
@@ -32,11 +33,16 @@ export default function ModuleList() {
 
   useEffect(load, []);
 
-  const items = (modules ?? []).map((m, i) => ({
+  // Admins also get unpublished drafts here (students never do). Drafts are
+  // numbered and counted separately so an admin's list matches what students
+  // see: published modules keep their 01, 02, ... numbers.
+  let published = 0;
+  const items = (modules ?? []).map((m) => ({
     ...m,
-    num: String(i + 1).padStart(2, '0'),
+    num: m.published ? String(++published).padStart(2, '0') : null,
     progress: getModuleProgress(m.id),
   }));
+  const live = items.filter((m) => m.published);
 
   return (
     <PageShell>
@@ -44,8 +50,7 @@ export default function ModuleList() {
         <span className="eyebrow text-primary-ink">Your learning path</span>
         <h1 className="font-serif text-h1 sm:text-display">Modules</h1>
         <p className="text-[17px] leading-[26px] text-muted">
-          Pick any module below — there's no order to follow and nothing to
-          unlock.
+          Pick any module to start.
         </p>
       </header>
 
@@ -72,8 +77,8 @@ export default function ModuleList() {
       {items.length > 0 && (
         <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
           <aside className="flex flex-col gap-4 lg:sticky lg:top-24 lg:col-start-2 lg:row-start-1">
-            <ProgressSummary items={items} />
-            <NextUpCard items={items} />
+            <ProgressSummary items={live} />
+            <NextUpCard items={live} />
           </aside>
 
           <ol className="flex min-w-0 flex-col lg:col-start-1 lg:row-start-1">
@@ -88,6 +93,13 @@ export default function ModuleList() {
 }
 
 function PathMarker({ status, num }) {
+  if (num === null) {
+    return (
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-[1.5px] border-dashed border-warning bg-surface text-sm font-semibold text-warning-ink">
+        –
+      </span>
+    );
+  }
   if (status === STATUS.COMPLETED) {
     return (
       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-success text-primary-fg">
@@ -115,17 +127,30 @@ function PathItem({ module: m, isLast }) {
   return (
     <li className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 sm:gap-[18px]">
       <div className="flex flex-col items-center pt-5" aria-hidden="true">
-        <PathMarker status={status} num={m.num} />
+        <PathMarker status={status} num={m.published ? m.num : null} />
         {!isLast && <span className="mt-1.5 min-h-5 w-0.5 flex-1 bg-line" />}
       </div>
 
       <Link
         to={`/modules/${m.id}`}
-        className="group mb-3.5 flex flex-col gap-3 rounded-[14px] border border-line bg-surface px-4 py-[18px] shadow-xs transition-[border-color,box-shadow] duration-200 hover:border-primary-line hover:shadow-md sm:px-6"
+        className={`group mb-3.5 flex flex-col gap-3 rounded-[14px] border bg-surface px-4 py-[18px] shadow-xs transition-[border-color,box-shadow] duration-200 hover:border-primary hover:shadow-md sm:px-6 ${
+          m.published
+            ? 'border-line-strong'
+            : 'border-dashed border-warning/70 bg-warning-soft/40'
+        }`}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-col gap-1">
-            <span className="eyebrow text-muted">Module {m.num}</span>
+            {m.published ? (
+              <span className="eyebrow text-muted">Module {m.num}</span>
+            ) : (
+              <span className="flex flex-wrap items-center gap-2">
+                <PublishBadge published={false} />
+                <span className="text-meta text-muted">
+                  Only admins can see this
+                </span>
+              </span>
+            )}
             <h2 className="font-serif text-[21px] font-semibold leading-7">
               {m.title}
             </h2>
@@ -145,10 +170,16 @@ function PathItem({ module: m, isLast }) {
               className="min-w-[140px] max-w-[320px] flex-1"
             />
           )}
-          {status === STATUS.COMPLETED && bestScore && (
+          {status === STATUS.COMPLETED && (
             <span className="whitespace-nowrap text-sm text-muted">
-              Best quiz score{' '}
-              <strong className="text-ink-2">{bestScore}</strong>
+              {bestScore ? (
+                <>
+                  Best quiz score{' '}
+                  <strong className="text-ink-2">{bestScore}</strong>
+                </>
+              ) : (
+                'Finished. Review any time.'
+              )}
             </span>
           )}
           {status === STATUS.NOT_STARTED && (

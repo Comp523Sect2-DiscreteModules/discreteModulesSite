@@ -48,7 +48,10 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-surface">
       <div className="mx-auto flex h-15 max-w-shell items-center gap-6 px-4 sm:px-6 lg:px-8">
-        <Link to="/" className="flex items-center gap-2.5 rounded-md text-ink">
+        <Link
+          to="/"
+          className="flex select-none items-center gap-2.5 rounded-md text-ink"
+        >
           <BrandMark />
           <span className="whitespace-nowrap font-serif text-[17px] font-semibold">
             Discrete Math Review
@@ -108,7 +111,7 @@ export default function Navbar() {
                 aria-expanded={menuOpen}
                 aria-controls="mobile-menu"
                 aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-                className="grid h-9 w-9 place-items-center rounded-md border border-line bg-surface text-ink sm:hidden"
+                className="grid h-9 w-9 place-items-center rounded-md border border-line-strong bg-surface text-ink sm:hidden"
               >
                 {menuOpen ? (
                   <CloseIcon className="h-5 w-5" />

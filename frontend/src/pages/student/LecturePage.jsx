@@ -1,13 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../api.js';
-import { getModuleProgress } from '../../progress.js';
+import {
+  getModuleProgress,
+  markCompleted,
+  markStarted,
+  recordReading,
+} from '../../progress.js';
 import MathContent, { extractHeadings } from '../../components/MathContent.jsx';
-import { ArrowLeftIcon, ArrowRightIcon } from '../../components/Icons.jsx';
+import { ArrowLeftIcon } from '../../components/Icons.jsx';
+import QuizLink from '../../components/QuizLink.jsx';
 import {
   EmptyState,
   ErrorState,
   ProgressBadge,
+  PublishBadge,
   Skeleton,
 } from '../../components/ui.jsx';
 
@@ -42,7 +49,40 @@ export default function LecturePage() {
     () => outline.flatMap((l) => [l.id, ...l.headings.map((h) => h.id)]),
     [outline],
   );
-  const { progress, activeId } = useReadingPosition(allIds);
+  const { progress, activeId, scrollable } = useReadingPosition(allIds);
+  const [status, setStatus] = useState(
+    () => getModuleProgress(moduleId).status,
+  );
+
+  // Opening a module starts it.
+  useEffect(() => {
+    if (!module) return;
+    markStarted(module.id);
+    setStatus(getModuleProgress(module.id).status);
+  }, [module]);
+
+  // Save how far the student has scrolled; reaching the end completes it.
+  useEffect(() => {
+    if (!module || !scrollable) return;
+    recordReading(module.id, progress);
+    setStatus(getModuleProgress(module.id).status);
+  }, [module, progress, scrollable]);
+
+  // A short module that fits on one screen can't be scrolled, so count it as
+  // read after a few seconds (long enough for math and video to finish laying
+  // out, which would make the page scrollable and cancel this).
+  useEffect(() => {
+    if (!module || scrollable || module.lessons.length === 0) return;
+    const t = setTimeout(() => {
+      markCompleted(module.id);
+      setStatus(getModuleProgress(module.id).status);
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [module, scrollable]);
+
+  function handleQuizClick() {
+    markCompleted(module.id);
+  }
 
   if (error) {
     return (
@@ -64,7 +104,6 @@ export default function LecturePage() {
   if (!module) return <LectureSkeleton />;
 
   const hasVideo = module.lessons.some((l) => l.video_url);
-  const status = getModuleProgress(module.id).status;
 
   return (
     <>
@@ -104,13 +143,15 @@ export default function LecturePage() {
               </nav>
             )}
             {module.quiz_form_url && (
-              <Link
-                to={`/modules/${module.id}/quiz`}
+              <QuizLink
+                moduleId={module.id}
+                url={module.quiz_form_url}
+                onClick={handleQuizClick}
                 className="btn btn-secondary justify-between rounded-lg"
+                iconClassName="h-4 w-4 text-primary"
               >
-                Practice quiz{' '}
-                <ArrowRightIcon className="h-4 w-4 text-primary" />
-              </Link>
+                Practice quiz
+              </QuizLink>
             )}
           </aside>
 
@@ -121,6 +162,19 @@ export default function LecturePage() {
             >
               <ArrowLeftIcon /> All modules
             </Link>
+
+            {!module.published && (
+              <div
+                role="note"
+                className="mb-6 flex items-start gap-2.5 rounded-lg border border-warning/60 bg-warning-soft px-4 py-3 text-sm text-warning-ink"
+              >
+                <PublishBadge published={false} />
+                <span>
+                  This module is a draft. Students can't see it until you
+                  publish it.
+                </span>
+              </div>
+            )}
 
             <header className="mb-8 flex flex-col gap-3 border-b border-line pb-7">
               <span className="eyebrow text-primary-ink">Module</span>
@@ -144,7 +198,7 @@ export default function LecturePage() {
             </header>
 
             {outline.length > 0 && (
-              <details className="mb-7 rounded-lg border border-line bg-surface-2 lg:hidden">
+              <details className="mb-7 rounded-lg border border-line-strong bg-surface-2 lg:hidden">
                 <summary className="cursor-pointer px-4 py-3 text-[15px] font-semibold">
                   On this page
                 </summary>
@@ -202,12 +256,14 @@ export default function LecturePage() {
                     Try the practice quiz for this module.
                   </p>
                 </div>
-                <Link
-                  to={`/modules/${module.id}/quiz`}
+                <QuizLink
+                  moduleId={module.id}
+                  url={module.quiz_form_url}
+                  onClick={handleQuizClick}
                   className="btn btn-primary"
                 >
-                  Start practice quiz <ArrowRightIcon />
-                </Link>
+                  Start practice quiz
+                </QuizLink>
               </div>
             )}
           </article>
@@ -272,9 +328,14 @@ function Outline({ outline, activeId }) {
   );
 }
 
-// Tracks scroll progress (0–1) and which outline target the reader is on.
+// Tracks scroll progress (0–1), whether the page scrolls at all, and which
+// outline target the reader is on.
 function useReadingPosition(ids) {
-  const [state, setState] = useState({ progress: 0, activeId: null });
+  const [state, setState] = useState({
+    progress: 0,
+    activeId: null,
+    scrollable: false,
+  });
 
   useEffect(() => {
     let frame = null;
@@ -289,9 +350,12 @@ function useReadingPosition(ids) {
         const el = document.getElementById(id);
         if (el && el.getBoundingClientRect().top < 140) activeId = id;
       }
+      const scrollable = max > 0;
       setState((s) =>
-        Math.abs(s.progress - progress) > 0.002 || s.activeId !== activeId
-          ? { progress, activeId }
+        Math.abs(s.progress - progress) > 0.002 ||
+        s.activeId !== activeId ||
+        s.scrollable !== scrollable
+          ? { progress, activeId, scrollable }
           : s,
       );
     }

@@ -71,3 +71,20 @@ export const AlertIcon = (p) => (
     <path d="M12 8v5M12 16.5v.01" />
   </Icon>
 );
+
+export const ChevronUpIcon = (p) => (
+  <Icon {...p}>
+    <path d="M6 15l6-6 6 6" />
+  </Icon>
+);
+export const ChevronDownIcon = (p) => (
+  <Icon {...p}>
+    <path d="M6 9l6 6 6-6" />
+  </Icon>
+);
+// Six dots: the conventional "drag me" handle.
+export const GripIcon = (p) => (
+  <Icon {...p} strokeWidth={3}>
+    <path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" />
+  </Icon>
+);
